@@ -14,7 +14,7 @@ import (
 
 func NewPostgresDB(cfg *config.DB) (*sqlx.DB, error) {
 	//NOTE: migrate-job
-	//if err := migrateSchema(cfg); err != nil {
+	// if err := migrateSchema(cfg); err != nil {
 	//	return nil, err
 	//}
 	return newDB(cfg)
@@ -36,6 +36,7 @@ func newDSN(cfg *config.DB) string {
 		cfg.Host, cfg.Port, cfg.Username, cfg.NameDB, cfg.Password)
 }
 
+//nolint:unused
 func migrateSchema(cfg *config.DB) error {
 	dsn := newDSN(cfg)
 	db, err := sql.Open("pgx", dsn)
