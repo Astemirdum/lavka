@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: lavka
+    restart: unless-stopped
+    image: "astdockerid1/lavka:t1.0"
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    environment:
+      - LOG_LEVEL=debug
+      # ConfigMap
+    depends_on:
+      - postgres
+    networks:
+      - enrollment
+
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: postgres:15.2-alpine
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    networks:
+      - enrollment
+    volumes:
+      - lavka_db_volume:/var/lib/postgresql/data
+      #- ./init-database.sh:/docker-entrypoint-initdb.d/init-database.sh
+
+volumes:
+  lavka_db_volume:
+
+networks:
+  enrollment:
+    driver: bridge

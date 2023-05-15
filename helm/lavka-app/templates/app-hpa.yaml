@@ -1,0 +1,35 @@
+{{- if .Values.app.autoscaling.enabled }}
+apiVersion: autoscaling/v2 # v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lavka-app.fullname" . }}-hpa
+  labels:
+    {{- include "lavka-app.labels" . | nindent 4 }}
+  namespace: {{ include "lavka-app.namespace" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lavka-app.fullname" . }}-deployment
+  minReplicas: {{ .Values.app.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.app.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.app.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: AverageValue
+          averageUtilization: {{ .Values.app.autoscaling.targetCPUUtilizationPercentage }}
+{{/*        targetAverageUtilization: {{ .Values.app.autoscaling.targetCPUUtilizationPercentage }}*/}}
+    {{- end }}
+    {{- if .Values.app.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: AverageValue
+          averageUtilization: {{ .Values.app.autoscaling.targetMemoryUtilizationPercentage }}
+{{/*        targetAverageUtilization: {{ .Values.app.autoscaling.targetMemoryUtilizationPercentage }}*/}}
+    {{- end }}
+{{- end }}

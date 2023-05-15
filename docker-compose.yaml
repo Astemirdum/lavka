@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: lavka
+    restart: unless-stopped
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=debug
+      - DB_HOST=postgres
+    depends_on:
+      - postgres
+      - migration
+    networks:
+      - enrollment
+
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: postgres:15.2-alpine
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    networks:
+      - enrollment
+    volumes:
+      - lavka_db_volume:/var/lib/postgresql/data
+      #- ./init-database.sh:/docker-entrypoint-initdb.d/init-database.sh
+
+  migrate-job:
+#    restart: unless-stopped
+    build:
+      context: ./
+      dockerfile: migrations/migrate.Dockerfile
+    command: [ "./wait-for-it.sh", "$DB_HOST:5432", "--", "sh", "-c", "./entrypoint.sh" ]
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+      - DB_HOST=postgres
+    depends_on:
+      - postgres
+    networks:
+      - enrollment
+
+
+volumes:
+  lavka_db_volume:
+
+networks:
+  enrollment:
+    driver: bridge

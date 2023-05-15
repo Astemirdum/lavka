@@ -1,0 +1,17 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.app.persistence.claimName }}
+  namespace: {{ include "lavka-app.namespace" . }}
+spec:
+  storageClassName: {{ .Values.storageClass.name }}
+  accessModes:
+    - {{ .Values.app.pv.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.app.persistence.claim | quote }}
+  volumeMode: {{ .Values.app.pv.volumeMode }}
+  volumeName: {{ .Values.app.pv.volumeName }}
+  {{- if .Values.app.persistence.dataSource }}
+  dataSource:
+  {{- end }}

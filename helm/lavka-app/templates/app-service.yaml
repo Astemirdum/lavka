@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lavka-app.fullname" . }}-svc
+  labels:
+    {{- include "lavka-app.labels" . | nindent 4 }}
+  namespace: {{ include "lavka-app.namespace" . }}
+spec:
+  type: {{ .Values.app.service.type }}
+  ports:
+    - port: {{ .Values.app.service.port }}
+      targetPort: http
+{{/*      {{ .Values.app.containerPort }}*/}}
+      protocol: TCP
+  selector:
+    {{- include "lavka-app.selectorLabels" . | nindent 4 }}

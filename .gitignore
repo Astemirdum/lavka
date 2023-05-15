@@ -1,0 +1,9 @@
+.database
+.DS_Store
+.idea
+data
+
+prob
+bin
+cover.out
+coverage.html

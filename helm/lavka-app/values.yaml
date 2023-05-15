@@ -1,0 +1,203 @@
+# Default values for lavka-app.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+namespace: "default"
+
+configData:
+  http:
+    host: "0.0.0.0"
+    port: "8080"
+    read: "20s"
+  logLevel: debug
+
+  db:
+    host: "postgresql-db-lb"
+    port: "5432"
+    user: postgres
+    name: postgres
+    data: /data/pgdata
+
+
+app:
+  affinity: { }
+  tolerations: [ ]
+  nodeSelector: { }
+  podAnnotations: {}
+  imagePullSecrets: [ ]
+  podSecurityContext: { }
+  securityContext: { }
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+  replicaCount: 2
+  image:
+    hostname: docker.io
+    repository: astdockerid1/lavka
+    tag: "t1.1"
+    pullPolicy: IfNotPresent
+
+  name: "lavka"
+  fullname: "lavka-app"
+
+  persistence:
+    enabled: true
+    claimName: fileshare
+    claim: 30Mi
+    dataSource: { }
+  pv:
+    accessMode: ReadWriteMany
+    volumeMode: Filesystem
+    volumeName: mini-pv1
+    capacity: 50Mi
+    reclaimPolicy: Retain
+    dataSource: { }
+    path: /local/pv1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
+    limits:
+      cpu: 100m
+      memory: 200Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+  containerPort: 8080
+  portName: http
+
+  restartPolicy: Always
+  strategy:
+    rollingUpdate:
+      maxSurge: 1 # 50%
+      maxUnavailable: 1
+    type: RollingUpdate
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 90
+    targetMemoryUtilizationPercentage: 90
+    packetsPerSecond: ""
+  priority:
+    className: high-priority
+    value: 10000
+  terminationGracePeriodSeconds: 60
+
+
+storageClass:
+  name: local-storage
+  volumeBindingMode: WaitForFirstConsumer
+
+db:
+  nodeSelector: {}
+  podAnnotations: { }
+  imagePullSecrets: [ ]
+  podSecurityContext: { }
+  containerSecurityContext:
+    securityContext: { }
+    enabled: false
+
+  autoscaling:
+    enabled: false
+  replicaCount: 1
+  name: "postgresql-db"
+  image:
+    hostname: docker.io
+    repository: postgres
+    tag: "15.2-alpine"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 800m
+      memory: 1024Mi
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdatePartition: 0
+    maxUnavailable: 1
+  namespace: default
+  secret:
+    pass: postgres
+  affinity: { }
+  tolerations: [ ]
+  terminationGracePeriodSeconds: 60
+  containerPort: 5432
+  portName: postgresql
+  probeEnabled: true
+  service:
+    lb:
+      type: LoadBalancer
+      port: 5432
+    np:
+      enabled: false
+      type: NodePort
+      port: 5432
+      nodePort: 32761
+  priority:
+    className: db-priority
+    value: 10001
+
+  persistence:
+    enabled: true
+    claimName: # "pg-data"
+    claim: 200Mi
+
+    accessModes: ["ReadWriteOnce"]
+    size: 200Mi
+    subPath:
+
+  job:
+    image:
+      hostname: docker.io
+      repository: astdockerid1/dbmigrate
+      tag: "t1.0"
+      pullPolicy: IfNotPresent
+
+
+priorityClassName: high-priority
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  name: "lavka-sa"
+
+  clusterRole: watcher
+  role: reader
+
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+     kubernetes.io/ingress.class: nginx
+     # kubernetes.io/tls-acme: "true"
+     nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: minikubeip
+      paths:
+        - path: /* # /api/v1/*
+          pathType: Prefix
+          serviceName: lavka-app-svc
+          servicePort: 80
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+setter: lol
+setter1: lol1
+
+skaffold: false

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "lavka-app.fullname" . }}-test-connection"
+  labels:
+    {{- include "lavka-app.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "lavka-app.fullname" . }}:{{ .Values.app.service.port }}']
+  restartPolicy: Never

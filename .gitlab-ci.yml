@@ -1,0 +1,137 @@
+default:
+  image: "golang:1.20.1-buster" # -alpine
+  tags:
+    - prod
+    - dind
+
+stages:
+  - lint
+  - tests
+  - build_bin
+  - build_image
+  - deploy
+
+#include:
+#  - local: ci/*.yml
+
+variables:
+  IMAGE_NAME: astdockerid1/lavka
+  IMAGE_TAG:  t1.0
+  REGISTRY_USER: astdockerid1
+
+.tools_apt:
+  before_script:
+    - apt-get update && apt-get install make
+    - apt-get update && apt-get install curl
+
+.mod:
+  before_script:
+    - go mod download
+    - go mod tidy
+
+
+.notify_script: &notify_script
+  after_script:
+    - if [ "${CI_JOB_STATUS}" = 'failed' ]; then
+      sh ci/notify.sh "${CI_JOB_STATUS}";
+      fi
+
+linter-ci:
+  tags:
+    - prod
+  stage: lint
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      variables:
+        DEPLOY_VARIABLE: "linter-ci"
+  extends:
+    - .tools_apt
+  before_script:
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
+    - mkdir tools
+  script:
+    - make lint
+  <<: *notify_script
+
+tests-ci:
+  tags:
+    - prod
+  stage: tests
+  extends:
+    - .tools_apt
+    - .mod
+  artifacts:
+    name: cover
+    expire_in: 1 days
+    paths:
+      - cover.out
+      - coverage.html
+  script:
+    - make test
+  <<: *notify_script
+
+build-bin:
+  tags:
+    - prod
+  stage: build_bin
+  extends:
+    - .tools_apt
+    - .mod
+  artifacts:
+    name: lavka
+    expire_in: 1d
+    paths:
+      - bin/lavka
+  cache:
+    key: binaries-cache-$CI_COMMIT_REF_SLUG
+    paths:
+      - bin/*
+  script:
+    - make build
+  <<: *notify_script
+
+build-image:
+  tags:
+    - dind
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  stage: build_image
+  rules:
+    - exists:
+        - Dockerfile
+  before_script:
+    - apk add curl
+    - echo ${REGISTRY_PASS} | docker login -u ${REGISTRY_USER} --password-stdin # $CI_REGISTRY
+  script:
+    - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+    - docker push ${IMAGE_NAME}:${IMAGE_TAG}
+  after_script:
+    - sh ci/notify.sh $CI_JOB_STATUS
+  <<: *notify_script
+
+
+deploy-ci:
+  image: alpine:3.17.2
+  tags:
+    - prod
+  variables:
+    REMOTE_USER: ""
+    REMOTE_HOST: ""
+  stage: deploy
+  when: manual
+  # allow_failure: true
+  environment:
+    name: production
+  only:
+    - main
+  before_script:
+    - apk add curl
+    - apk update && apk add openssh-client
+    - chmod 400 $SSH_KEY
+  script:
+    - sh ci/deploy.sh
+  after_script:
+    - sh ci/notify.sh $CI_JOB_STATUS

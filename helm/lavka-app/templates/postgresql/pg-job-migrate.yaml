@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Chart.Name }}-migration-job"
+  namespace: {{ include "lavka-app.namespace" . }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    app: {{ .Chart.Name }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: dbmigrate
+spec:
+  activeDeadlineSeconds: 100
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        release: {{ .Release.Name }}
+        component: dbmigrate
+      annotations:
+        readiness.status.sidecar.istio.io/applicationPorts: ""
+    spec:
+      initContainers:
+        - name: pg-migration-init
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+{{/*          command: [ 'sh', '-c', "until nc -w 2 192.168.49.2 32761; do echo Waiting for ; sleep 2; done;" ]*/}}
+          command: {{ include "app.pgWait" . }}
+{{/*          command: [ 'sh', '-c', "until nc -w 2 {{ .Values.configData.db.host }} {{ .Values.configData.db.port }}; do echo Waiting for {{ .Values.configData.db.host }} {{ .Values.configData.db.port }}; sleep 2; done;" ]*/}}
+          env:
+            {{- include "app.env.pgHostPortDB" . | nindent 12 }}
+      containers:
+      - name: dbmigrate
+        image: {{ .Values.db.job.image.repository }}:{{ .Values.db.job.image.tag }}
+        imagePullPolicy: {{ .Values.db.job.image.pullPolicy }}
+        command:
+          [ "/bin/sh", "-c" ]
+        args:
+          - /migrations/migrate.sh
+        env:
+{{/*        {{- range $key, $val := .Values.env }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          value: {{ $val | quote }}*/}}
+{{/*        {{- end }}*/}}
+{{/*        {{- range $key, $val := .Values.envSecret }}*/}}
+{{/*        - name: {{ $key | quote }}*/}}
+{{/*          valueFrom:*/}}
+{{/*            secretKeyRef:*/}}
+{{/*              key: {{ $key | lower | replace "_" "-" }}*/}}
+{{/*              name: {{ $val }}*/}}
+{{/*        {{- end }}*/}}
+
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "db.name" . }}-secret
+              key: postgresql-password
+
+        volumeMounts:
+          - name: migrate-scripts
+            mountPath: /migrations/migrate.sh
+            subPath: migrate.sh
+
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+{{/*      dnsPolicy: ClusterFirst*/}}
+      restartPolicy: Never
+
+      volumes:
+        - name: migrate-scripts
+          configMap:
+            name: {{ include "db.name" . }}-migrate-config
+            defaultMode: 0755
+            items:
+              - key: "migrate.sh"
+                path: "migrate.sh"

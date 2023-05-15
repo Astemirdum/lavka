@@ -1,0 +1,32 @@
+output = "models/v1"
+pkgname = "models"
+wipe = true
+no-hooks = true
+struct-tag-casing = "alias"
+
+[psql]
+dbname = "postgres"
+host = "localhost"
+user = "postgres"
+pass = "password"
+port = 5432
+sslmode = "disable"
+schema = "lk"
+
+[imports.all]
+  standard = [
+    '"database/sql"',
+    '"fmt"',
+    '"reflect"',
+    '"strings"',
+    '"sync"',
+    '"time"',
+  ]
+  third_party = [
+    '"github.com/friendsofgo/errors"',
+    '"github.com/volatiletech/sqlboiler/v4/boil"',
+    '"github.com/volatiletech/sqlboiler/v4/queries"',
+    '"github.com/volatiletech/sqlboiler/v4/queries/qm"',
+    '"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"',
+    '"github.com/volatiletech/strmangle"',
+  ]
