@@ -19,7 +19,7 @@ jobs:
     name: build-image
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: lavka
+      IMAGE_NAME: astdockerid1/lavka
       IMAGE_TAG: actionv1
       COMMIT_HASH: ${{ github.sha }}
 
