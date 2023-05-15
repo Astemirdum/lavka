@@ -4,12 +4,12 @@ on:
   push:
     tags:
       - "*"
-    branches: [ master ]
+    branches: [ main ]
 #    paths-ignore:
 #      - '.github/workflows/**'
   pull_request:
     types: [opened, edited, reopened]
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
